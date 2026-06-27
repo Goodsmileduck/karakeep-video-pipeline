@@ -48,8 +48,8 @@ def process(bm, kk, oclient, obase, omodel, *, _transcribe_fn=None, _tag_fn=None
         log.info("tagged %s with %d tags", bid, len(tags))
 
 def main():
-    kk = KarakeepClient(os.environ.get("KARAKEEP_API","http://localhost:3366/api/v1"), os.environ["KARAKEEP_TOKEN"])
-    obase = os.environ.get("OLLAMA_API","http://192.168.77.77:11434"); omodel = os.environ.get("TAG_MODEL","llama3.2")
+    kk = KarakeepClient(os.environ["KARAKEEP_API"], os.environ["KARAKEEP_TOKEN"])
+    obase = os.environ.get("OLLAMA_API","http://ollama:11434"); omodel = os.environ.get("TAG_MODEL","llama3.2")
     interval = int(os.environ.get("POLL_INTERVAL_SEC","45"))
     oclient = httpx.Client()
     log.info("video-tagger up; polling every %ss", interval)
