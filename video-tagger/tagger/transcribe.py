@@ -10,7 +10,7 @@ def _default_model():
                               device="cpu", compute_type="int8")
     return _model
 
-def transcribe(video_path: str, *, model=None, workdir=None) -> str:
+def transcribe(video_path: str, *, model=None, workdir=None) -> str:  # workdir accepted but unused (reconciles Task-10 callsite)
     m = model or _default_model()
     segments, _info = m.transcribe(video_path)
     return " ".join(s.text.strip() for s in segments).strip()

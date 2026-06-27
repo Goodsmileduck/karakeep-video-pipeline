@@ -21,4 +21,5 @@ def test_parse_tags():
 def test_is_empty_transcript():
     assert is_empty_transcript("   ")
     assert is_empty_transcript("[music]")
+    assert is_empty_transcript("[BLANK_AUDIO]")
     assert not is_empty_transcript("hello there everyone")

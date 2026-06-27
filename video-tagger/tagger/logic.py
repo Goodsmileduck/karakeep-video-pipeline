@@ -27,5 +27,5 @@ def parse_tags(llm_text: str) -> list[str]:
     return [p.strip() for p in re.split(r"[,\n]", s) if p.strip()]
 
 def is_empty_transcript(text: str) -> bool:
-    t = re.sub(r"\[(music|applause|silence|no speech)\]", "", text, flags=re.I).strip()
+    t = re.sub(r"\[.*?\]", "", text, flags=re.I).strip()
     return len(t) < 3

@@ -8,21 +8,43 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("video-tagger")
 DONE = "transcribed"
 
-def process(bm, kk, oclient, obase, omodel):
+def process(bm, kk, oclient, obase, omodel, *, _transcribe_fn=None, _tag_fn=None):
     bid = bm["id"]; aid = video_asset_id(bm)
     if not aid: return
     with tempfile.TemporaryDirectory() as d:
         vid = kk.get_asset_bytes(aid, f"{d}/v.mp4")
         try:
-            text = transcribe(vid, workdir=d)
+            if _transcribe_fn is not None:
+                text = _transcribe_fn(vid)
+            else:
+                text = transcribe(vid, workdir=d)
         except Exception as e:
-            log.error("transcribe failed %s: %s", bid, e); kk.add_tag(bid, DONE); return
+            log.error("transcribe failed %s: %s", bid, e)
+            try:
+                kk.add_tag(bid, DONE)
+            except Exception as se:
+                log.error("sentinel failed after transcribe error %s: %s", bid, se)
+            return
         if is_empty_transcript(text):
-            log.info("no speech in %s; marking done", bid); kk.add_tag(bid, DONE); return
-        tags = tags_from_transcript(oclient, obase, omodel, text)
-        kk.add_tags(bid, tags)
-        kk.set_note(bid, ("Transcript:\n" + text)[:8000])
-        kk.add_tag(bid, DONE)
+            log.info("no speech in %s; marking done", bid)
+            try:
+                kk.add_tag(bid, DONE)
+            except Exception as se:
+                log.error("sentinel failed for no-speech %s: %s", bid, se)
+            return
+        if _tag_fn is not None:
+            tags = _tag_fn(text)
+        else:
+            tags = tags_from_transcript(oclient, obase, omodel, text)
+        kk.add_tags(bid, tags)  # propagates on failure; retry is safe (tags not yet added)
+        try:
+            kk.set_note(bid, ("Transcript:\n" + text)[:8000])
+        except Exception as e:
+            log.warning("set_note failed %s (non-fatal): %s", bid, e)
+        try:
+            kk.add_tag(bid, DONE)
+        except Exception as e:
+            log.error("sentinel failed %s: %s", bid, e)
         log.info("tagged %s with %d tags", bid, len(tags))
 
 def main():
@@ -35,7 +57,10 @@ def main():
         try:
             for bm in kk.list_recent():
                 if needs_tagging(bm, DONE):
-                    process(bm, kk, oclient, obase, omodel)   # serial: one at a time
+                    try:
+                        process(bm, kk, oclient, obase, omodel)   # serial: one at a time
+                    except Exception as e:
+                        log.error("process failed bm=%s: %s", bm.get("id"), e)
         except Exception as e:
             log.error("poll error: %s", e)
         time.sleep(interval)
