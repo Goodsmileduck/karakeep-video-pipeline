@@ -1,0 +1,136 @@
+# Karakeep video pipeline — portable all-in-one stack.
+# Assumes a normal internet connection (the host can reach Instagram, YouTube,
+# api.telegram.org, etc.). Everything runs locally; no external proxy.
+#
+# First run:
+#   1) cp .env.example .env  and fill in the secrets you generate (see comments there)
+#   2) docker compose up -d karakeep        # bring up the core first
+#   3) open http://localhost:3000, sign up (first account = admin),
+#      Settings -> API Keys -> create one, put it in .env as KARAKEEP_TOKEN
+#   4) docker compose up -d                  # start the rest (fetcher, tagger, bot)
+#   5) ollama: pull the models once -> `docker compose exec ollama ollama pull llama3.2`
+#      and `... pull gemma4:26b` (image tagging). GPU is host-specific — see the
+#      ollama service notes below; CPU works but is slow.
+
+services:
+  # ---------- Core Karakeep ----------
+  karakeep:
+    image: ghcr.io/karakeep-app/karakeep:${KARAKEEP_VERSION:-release}
+    container_name: karakeep
+    restart: unless-stopped
+    ports:
+      - "3000:3000"            # the web UI / API
+    env_file: [.env]
+    environment:
+      DATA_DIR: /data
+      MEILI_ADDR: http://meilisearch:7700
+      BROWSER_WEB_URL: http://chrome:9222
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      # AI tagging via the bundled Ollama. INFERENCE_OUTPUT_SCHEMA=plain is REQUIRED
+      # for Ollama builds that don't honor structured output (returns {} otherwise).
+      OLLAMA_BASE_URL: http://ollama:11434
+      INFERENCE_OUTPUT_SCHEMA: plain
+      INFERENCE_TEXT_MODEL: ${INFERENCE_TEXT_MODEL:-llama3.2}
+      INFERENCE_IMAGE_MODEL: ${INFERENCE_IMAGE_MODEL:-gemma4:26b}
+      INFERENCE_JOB_TIMEOUT_SEC: ${INFERENCE_JOB_TIMEOUT_SEC:-180}   # slow iGPU image tagging
+    volumes:
+      - karakeep_data:/data
+    depends_on: [chrome, meilisearch]
+
+  chrome:
+    image: gcr.io/zenika-hub/alpine-chrome:124
+    container_name: karakeep-chrome
+    restart: unless-stopped
+    command:
+      - --no-sandbox
+      - --disable-gpu
+      - --disable-dev-shm-usage
+      - --remote-debugging-address=0.0.0.0
+      - --remote-debugging-port=9222
+      - --hide-scrollbars
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.41.0
+    container_name: karakeep-meilisearch
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meili_data:/meili_data
+
+  # ---------- Local LLM inference ----------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_models:/root/.ollama
+    # GPU is host-specific. Examples (uncomment what fits your box):
+    #  NVIDIA:  deploy: {resources: {reservations: {devices: [{driver: nvidia, count: all, capabilities: [gpu]}]}}}
+    #  AMD ROCm/Vulkan: devices: ["/dev/kfd", "/dev/dri"]  +  group_add: ["video"]
+    # CPU-only works out of the box (slow). To use an EXISTING host Ollama instead,
+    # comment out this service and set OLLAMA_API / OLLAMA_BASE_URL to that host URL.
+
+  # ---------- Video download (Cobalt) ----------
+  cobalt:
+    image: ghcr.io/imputnet/cobalt:11
+    container_name: cobalt
+    init: true
+    restart: unless-stopped
+    # No host port — only the in-stack services reach it. API key required anyway.
+    environment:
+      API_URL: "http://cobalt:9000/"
+      API_AUTH_REQUIRED: "1"
+      API_KEY_URL: "file:///keys.json"
+    volumes:
+      - ./cobalt/keys.json:/keys.json:ro    # generate per README; key also goes in .env
+
+  # ---------- New pipeline services ----------
+  video-fetcher:
+    build: ./video-fetcher
+    container_name: video-fetcher
+    restart: unless-stopped
+    environment:
+      KARAKEEP_API: http://karakeep:3000/api/v1
+      KARAKEEP_TOKEN: ${KARAKEEP_TOKEN:?set KARAKEEP_TOKEN in .env}
+      COBALT_API: http://cobalt:9000
+      COBALT_API_KEY: ${COBALT_API_KEY:?set COBALT_API_KEY in .env}
+      POLL_INTERVAL_SEC: ${POLL_INTERVAL_SEC:-45}
+    depends_on: [cobalt, karakeep]
+
+  video-tagger:
+    build: ./video-tagger
+    container_name: video-tagger
+    restart: unless-stopped
+    environment:
+      KARAKEEP_API: http://karakeep:3000/api/v1
+      KARAKEEP_TOKEN: ${KARAKEEP_TOKEN:?set KARAKEEP_TOKEN in .env}
+      OLLAMA_API: http://ollama:11434
+      TAG_MODEL: ${TAG_MODEL:-llama3.2}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      POLL_INTERVAL_SEC: ${POLL_INTERVAL_SEC:-45}
+    volumes:
+      - whisper_cache:/models   # caches the faster-whisper model (~250 MB)
+    depends_on: [ollama, karakeep]
+
+  # ---------- Telegram bot ----------
+  # Upstream image. To get PDF + asset-upload-retry support, build the fork instead:
+  #   build: { context: 'https://github.com/Goodsmileduck/karakeepbot.git#feat/document-support' }
+  karakeepbot:
+    image: ghcr.io/madh93/karakeepbot:latest
+    container_name: karakeepbot
+    restart: unless-stopped
+    environment:
+      KARAKEEPBOT_TELEGRAM_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env}
+      KARAKEEPBOT_TELEGRAM_ALLOWLIST: ${TELEGRAM_ALLOWLIST:?set TELEGRAM_ALLOWLIST in .env}
+      KARAKEEPBOT_KARAKEEP_URL: http://karakeep:3000
+      KARAKEEPBOT_KARAKEEP_TOKEN: ${KARAKEEP_TOKEN:?set KARAKEEP_TOKEN in .env}
+      KARAKEEPBOT_FILEPROCESSOR_MAXSIZE: "20971520"
+    depends_on: [karakeep]
+
+volumes:
+  karakeep_data:
+  meili_data:
+  ollama_models:
+  whisper_cache:
