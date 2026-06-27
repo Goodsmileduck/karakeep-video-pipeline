@@ -19,3 +19,4 @@ def test_attach_and_tag(tmp_path):
     c.add_tag("B1", "video-fetched")
     assert ("POST", "/api/v1/assets") in calls
     assert ("POST", "/api/v1/bookmarks/B1/assets") in calls
+    assert ("POST", "/api/v1/bookmarks/B1/tags") in calls
