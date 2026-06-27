@@ -1,0 +1,44 @@
+import os, time, tempfile, logging, httpx
+from tagger.logic import needs_tagging, video_asset_id, is_empty_transcript
+from tagger.transcribe import transcribe
+from tagger.ollama import tags_from_transcript
+from tagger.karakeep import KarakeepClient
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger("video-tagger")
+DONE = "transcribed"
+
+def process(bm, kk, oclient, obase, omodel):
+    bid = bm["id"]; aid = video_asset_id(bm)
+    if not aid: return
+    with tempfile.TemporaryDirectory() as d:
+        vid = kk.get_asset_bytes(aid, f"{d}/v.mp4")
+        try:
+            text = transcribe(vid, workdir=d)
+        except Exception as e:
+            log.error("transcribe failed %s: %s", bid, e); kk.add_tag(bid, DONE); return
+        if is_empty_transcript(text):
+            log.info("no speech in %s; marking done", bid); kk.add_tag(bid, DONE); return
+        tags = tags_from_transcript(oclient, obase, omodel, text)
+        kk.add_tags(bid, tags)
+        kk.set_note(bid, ("Transcript:\n" + text)[:8000])
+        kk.add_tag(bid, DONE)
+        log.info("tagged %s with %d tags", bid, len(tags))
+
+def main():
+    kk = KarakeepClient(os.environ.get("KARAKEEP_API","http://localhost:3366/api/v1"), os.environ["KARAKEEP_TOKEN"])
+    obase = os.environ.get("OLLAMA_API","http://192.168.77.77:11434"); omodel = os.environ.get("TAG_MODEL","llama3.2")
+    interval = int(os.environ.get("POLL_INTERVAL_SEC","45"))
+    oclient = httpx.Client()
+    log.info("video-tagger up; polling every %ss", interval)
+    while True:
+        try:
+            for bm in kk.list_recent():
+                if needs_tagging(bm, DONE):
+                    process(bm, kk, oclient, obase, omodel)   # serial: one at a time
+        except Exception as e:
+            log.error("poll error: %s", e)
+        time.sleep(interval)
+
+if __name__ == "__main__":
+    main()

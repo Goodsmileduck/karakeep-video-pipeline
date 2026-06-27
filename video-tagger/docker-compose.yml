@@ -1,0 +1,17 @@
+services:
+  video-tagger:
+    build: .
+    init: true
+    restart: unless-stopped
+    environment:
+      KARAKEEP_API: "http://192.168.77.77:3366/api/v1"
+      KARAKEEP_TOKEN: "<karakeep API token>"
+      OLLAMA_API: "http://192.168.77.77:11434"
+      TAG_MODEL: "llama3.2"
+      WHISPER_MODEL: "small"
+      POLL_INTERVAL_SEC: "45"
+    volumes:
+      - whisper-cache:/models   # persists the ~250 MB faster-whisper model across restarts
+
+volumes:
+  whisper-cache:
