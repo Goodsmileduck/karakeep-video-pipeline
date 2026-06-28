@@ -1,5 +1,8 @@
 # Karakeep Video Pipeline
 
+[![tests](https://github.com/Goodsmileduck/karakeep-video-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/Goodsmileduck/karakeep-video-pipeline/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A self-contained stack that lets you send an **Instagram / YouTube / TikTok link** to
 a Telegram bot and have the video **saved into Karakeep and auto-categorized by its
 spoken content** (audio transcription → tags).
