@@ -14,8 +14,8 @@ spoken content** (audio transcription → tags).
 |---------|------|
 | `karakeep`, `chrome`, `meilisearch` | The Karakeep bookmark app + crawler + search |
 | `ollama` | Local LLM inference (tagging). GPU is host-specific — see compose notes |
-| `cobalt` | Downloads videos (no account/cookies for public content); internal-only, API-key protected |
-| `video-fetcher` | Polls Karakeep for video links → Cobalt download → attaches the video to the bookmark |
+| `cobalt` | Primary downloader (no account/cookies for public content); internal-only, API-key protected |
+| `video-fetcher` | Polls Karakeep for video links → **Cobalt, falling back to yt-dlp** → attaches the video to the bookmark |
 | `video-tagger` | Polls for bookmarks with a video → faster-whisper transcript → llama3.2 tags → writes back |
 | `karakeepbot` | The Telegram bot that turns your messages into bookmarks |
 
@@ -54,8 +54,11 @@ transcribed and topical tags appear. Check `docker compose logs -f video-fetcher
 video-tagger`.
 
 ## Notes
-- **Cobalt** is reachable only inside the compose network (no published port) and still
-  requires `Authorization: Api-Key`. TikTok extraction can be flaky; IG/YouTube are solid.
+- **Downloaders:** Cobalt is tried first (great for Instagram, no account needed); if it
+  can't extract a URL the fetcher **falls back to yt-dlp** (which handles TikTok,
+  YouTube, and 1800+ sites). Cobalt is reachable only inside the compose network (no
+  published port) and requires `Authorization: Api-Key`. Private content still needs
+  login and is out of scope.
 - **Whisper** uses `small` (CPU/int8) by default — ~7× realtime on a modest box. Set
   `WHISPER_MODEL=base` (faster) or `medium` (more accurate) in `.env`.
 - **GPU:** `ollama` runs CPU-only unless you wire up device passthrough (see the compose

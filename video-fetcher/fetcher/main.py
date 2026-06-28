@@ -1,6 +1,7 @@
 import os, time, tempfile, logging, httpx
 from fetcher.candidates import needs_fetch
 from fetcher.cobalt import download_video, CobaltError
+from fetcher.download import download_with_fallback, DownloadError
 from fetcher.karakeep import KarakeepClient
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -20,7 +21,7 @@ def process(bm, kk, download_fn):
         path = f"{d}/video.mp4"
         try:
             download_fn(url, path)
-        except (CobaltError, httpx.HTTPError) as e:
+        except (CobaltError, httpx.HTTPError, DownloadError) as e:
             log.error("download failed for %s: %s", bid, e)
             try:
                 kk.add_tag(bid, FAILED)
@@ -50,7 +51,8 @@ def main():
         try:
             for bm in kk.list_recent():
                 if needs_fetch(bm, FETCHED, FAILED):
-                    download_fn = lambda url, path: download_video(hclient, cobalt_base, cobalt_key, url, path)
+                    cobalt_fn = lambda url, path: download_video(hclient, cobalt_base, cobalt_key, url, path)
+                    download_fn = lambda url, path: download_with_fallback(url, path, cobalt_fn=cobalt_fn)
                     process(bm, kk, download_fn)
         except Exception as e:
             log.error("poll error: %s", e)
