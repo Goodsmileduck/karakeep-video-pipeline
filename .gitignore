@@ -3,4 +3,5 @@ __pycache__/
 *.pyc
 .env
 cobalt/keys.json
+cookies/instagram.txt
 .superpowers/

@@ -97,6 +97,12 @@ services:
       COBALT_API: http://cobalt:9000
       COBALT_API_KEY: ${COBALT_API_KEY:?set COBALT_API_KEY in .env}
       POLL_INTERVAL_SEC: ${POLL_INTERVAL_SEC:-45}
+      # Optional: reliable Instagram. yt-dlp uses these cookies if the file exists;
+      # with no file (default) IG is anonymous/best-effort. See README "Reliable
+      # Instagram (optional)" — then uncomment the volume mount below.
+      YTDLP_COOKIES: /cookies/instagram.txt
+    # volumes:
+    #   - ./cookies/instagram.txt:/cookies/instagram.txt:ro
     depends_on: [cobalt, karakeep]
 
   video-tagger:

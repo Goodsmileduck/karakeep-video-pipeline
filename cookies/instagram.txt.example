@@ -1,0 +1,14 @@
+# Netscape HTTP Cookie File
+#
+# OPTIONAL — only needed to make Instagram downloads reliable.
+# Anonymous IG works for some public reels but gets login-walled / rate-limited
+# from datacenter IPs; supplying cookies from a logged-in (throwaway) account fixes it.
+#
+# How to produce the real file (cookies/instagram.txt):
+#   1) Log in to instagram.com in a browser with a THROWAWAY account.
+#   2) Export cookies in Netscape format with a "Get cookies.txt" browser extension.
+#   3) Save as cookies/instagram.txt (this dir), then uncomment the video-fetcher
+#      volume mount in docker-compose.yml and `docker compose up -d video-fetcher`.
+#
+# Notes: cookies EXPIRE (re-export periodically); there is a small ban risk on the
+# burner account; the real cookies/instagram.txt is gitignored — never commit it.

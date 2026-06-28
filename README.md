@@ -66,6 +66,17 @@ video-tagger`.
   YouTube, and 1800+ sites). Cobalt is reachable only inside the compose network (no
   published port) and requires `Authorization: Api-Key`. Private content still needs
   login and is out of scope.
+- **Instagram is best-effort by default.** Anonymous IG works for many public reels but
+  Instagram login-walls / rate-limits anonymous access from datacenter IPs, so some
+  reels fail (they're marked `fetch-failed` and never retried — no loop). Tracking
+  params (`utm_*`, `igsh`, …) are stripped automatically before download.
+- **Reliable Instagram (optional):** supply cookies from a logged-in **throwaway**
+  account. Export `cookies.txt` (Netscape format) with a "Get cookies.txt" browser
+  extension, save it as `cookies/instagram.txt`, uncomment the `video-fetcher` volume
+  mount in `docker-compose.yml`, and `docker compose up -d video-fetcher`. yt-dlp then
+  uses it (`YTDLP_COOKIES` is already wired). Cookies **expire** (re-export
+  periodically) and carry a small ban risk on the burner. See
+  `cookies/instagram.txt.example`. Default (no cookies) keeps working.
 - **Whisper** uses `small` (CPU/int8) by default — ~7× realtime on a modest box. Set
   `WHISPER_MODEL=base` (faster) or `medium` (more accurate) in `.env`.
 - **GPU:** `ollama` runs CPU-only unless you wire up device passthrough (see the compose

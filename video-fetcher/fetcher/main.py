@@ -3,6 +3,7 @@ from fetcher.candidates import needs_fetch
 from fetcher.cobalt import download_video, CobaltError
 from fetcher.download import download_with_fallback, DownloadError
 from fetcher.karakeep import KarakeepClient
+from fetcher.urlclean import clean_url
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("video-fetcher")
@@ -15,7 +16,7 @@ def process(bm, kk, download_fn):
     Tag-API failures are guarded: a transient failure logging and swallowed so the
     bookmark keeps its correct sentinel rather than looping forever.
     """
-    bid = bm["id"]; url = bm["content"]["url"]
+    bid = bm["id"]; url = clean_url(bm["content"]["url"])
     log.info("fetching %s for bookmark %s", url, bid)
     with tempfile.TemporaryDirectory() as d:
         path = f"{d}/video.mp4"
