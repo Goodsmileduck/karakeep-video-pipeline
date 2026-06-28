@@ -4,6 +4,10 @@ A self-contained stack that lets you send an **Instagram / YouTube / TikTok link
 a Telegram bot and have the video **saved into Karakeep and auto-categorized by its
 spoken content** (audio transcription → tags).
 
+**Supported sources:** Instagram (via [Cobalt](https://cobalt.tools/), no account or
+cookies for public content), and TikTok / YouTube / 1800+ sites (via a
+[yt-dlp](https://github.com/yt-dlp/yt-dlp) fallback). Public content only.
+
 > **Network assumption:** this reference assumes a *normal* internet connection — the
 > host can reach Instagram, YouTube, and `api.telegram.org` directly. If your server
 > is in a region that blocks those, the IG/Telegram-facing services must run somewhere
@@ -65,3 +69,10 @@ video-tagger`.
   comments). To reuse an existing host Ollama, comment out the `ollama` service and point
   `OLLAMA_API`/`OLLAMA_BASE_URL` at it.
 - **Deep tagging is audio-based** — reels with no speech yield no content tags (by design).
+
+## License
+
+[MIT](LICENSE). Built on [Karakeep](https://karakeep.app/), [Cobalt](https://cobalt.tools/),
+[yt-dlp](https://github.com/yt-dlp/yt-dlp), [faster-whisper](https://github.com/SYSTRAN/faster-whisper),
+and [Ollama](https://ollama.com/) — respect those projects' licenses and the source
+platforms' terms of service.

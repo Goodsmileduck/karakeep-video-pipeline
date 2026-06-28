@@ -1,0 +1,26 @@
+name: tests
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [video-fetcher, video-tagger]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Unit tests use httpx.MockTransport + injected fakes — no network, no real
+      # yt-dlp / faster-whisper / Ollama needed.
+      - name: Install test deps
+        run: pip install httpx pytest
+      - name: Run tests
+        working-directory: ${{ matrix.service }}
+        run: PYTHONPATH=. pytest -q
