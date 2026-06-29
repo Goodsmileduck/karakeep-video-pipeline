@@ -2,8 +2,9 @@ import json, re
 
 def _tags(bm): return {t.get("name") for t in bm.get("tags", [])}
 
-def needs_tagging(bm: dict, done_tag: str) -> bool:
-    if done_tag in _tags(bm):
+def needs_tagging(bm: dict, done_tag: str, failed_tag: str | None = None) -> bool:
+    tags = _tags(bm)
+    if done_tag in tags or (failed_tag and failed_tag in tags):
         return False
     return any(a.get("assetType") == "video" for a in bm.get("assets", []))
 

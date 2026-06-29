@@ -7,6 +7,7 @@ from tagger.karakeep import KarakeepClient
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("video-tagger")
 DONE = "transcribed"
+FAILED = "transcribe-failed"
 
 def process(bm, kk, oclient, obase, omodel, *, _transcribe_fn=None, _tag_fn=None):
     bid = bm["id"]; aid = video_asset_id(bm)
@@ -19,9 +20,13 @@ def process(bm, kk, oclient, obase, omodel, *, _transcribe_fn=None, _tag_fn=None
             else:
                 text = transcribe(vid, workdir=d)
         except Exception as e:
+            # Transcription crashed (e.g. a non-video asset slipped through). Mark
+            # FAILED, not DONE — DONE masks the failure as a clean success with zero
+            # content tags. FAILED is a distinct, visible sentinel that needs_tagging
+            # also skips, so it isn't retried forever on the same bad asset.
             log.error("transcribe failed %s: %s", bid, e)
             try:
-                kk.add_tag(bid, DONE)
+                kk.add_tag(bid, FAILED)
             except Exception as se:
                 log.error("sentinel failed after transcribe error %s: %s", bid, se)
             return
@@ -56,7 +61,7 @@ def main():
     while True:
         try:
             for bm in kk.list_recent():
-                if needs_tagging(bm, DONE):
+                if needs_tagging(bm, DONE, FAILED):
                     try:
                         process(bm, kk, oclient, obase, omodel)   # serial: one at a time
                     except Exception as e:

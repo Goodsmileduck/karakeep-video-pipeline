@@ -9,6 +9,13 @@ def test_needs_tagging():
     assert not needs_tagging(_bm(assets=["video"], tags=["transcribed"]), "transcribed")
     assert not needs_tagging(_bm(assets=["image"]), "transcribed")  # no video
 
+def test_needs_tagging_skips_failed():
+    # a bookmark already marked transcribe-failed must not be retried forever
+    assert not needs_tagging(
+        _bm(assets=["video"], tags=["transcribe-failed"]), "transcribed", "transcribe-failed")
+    # still picks up a fresh video when neither sentinel is present
+    assert needs_tagging(_bm(assets=["video"]), "transcribed", "transcribe-failed")
+
 def test_video_asset_id():
     assert video_asset_id(_bm(assets=["image","video"])) == "a1"
     assert video_asset_id(_bm(assets=["image"])) is None
