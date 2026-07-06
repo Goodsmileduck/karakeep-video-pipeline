@@ -79,6 +79,20 @@ def test_parse_tags_preserves_existing_valid_formats():
     assert parse_tags("Cooking\nRecipe\nDessert") == ["Cooking", "Recipe", "Dessert"]
 
 
+def test_parse_tags_rejects_raw_hashtag_blocks():
+    assert parse_tags("#fitness#yoga") == []
+    assert parse_tags("#fitness #yoga") == []
+    assert parse_tags("Cooking, #fitness#yoga, Recipe") == ["Cooking", "Recipe"]
+
+
+def test_parse_tags_accepts_fence_with_spaced_info_string():
+    assert parse_tags("``` json\n[\"Cooking\"]\n```") == ["Cooking"]
+
+
+def test_parse_tags_preserves_cyrillic_tags():
+    assert parse_tags("Йога, Рецепт") == ["Йога", "Рецепт"]
+
+
 def test_raw_tag_candidates_reports_non_empty_bad_output():
     assert raw_tag_candidates("#fitnessexerciseweightlossmetabolismyogaenergyboost") == [
         "#fitnessexerciseweightlossmetabolismyogaenergyboost"

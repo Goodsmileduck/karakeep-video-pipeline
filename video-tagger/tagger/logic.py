@@ -26,7 +26,7 @@ def video_asset_id(bm: dict):
 
 def _clean_fence(text: str) -> str:
     s = text.strip()
-    s = re.sub(r"^```[a-zA-Z]*\n?|```$", "", s).strip()
+    s = re.sub(r"^```\s*[a-zA-Z]*\s*\n?|```$", "", s).strip()
     return s
 
 
@@ -48,7 +48,7 @@ def _normalize_tag(tag: str) -> str:
 
 
 def _is_bad_tag(tag: str) -> bool:
-    if not tag or len(tag) > MAX_TAG_LEN:
+    if not tag or "#" in tag or len(tag) > MAX_TAG_LEN:
         return True
     if len(tag) > MAX_SINGLE_TOKEN_LEN and not re.search(r"[\s_-]", tag):
         return True
