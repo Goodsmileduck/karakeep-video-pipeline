@@ -115,6 +115,7 @@ services:
       OLLAMA_API: http://ollama:11434
       TAG_MODEL: ${TAG_MODEL:-llama3.2}
       WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-auto}
       POLL_INTERVAL_SEC: ${POLL_INTERVAL_SEC:-45}
     volumes:
       - whisper_cache:/models   # caches the faster-whisper model (~250 MB)

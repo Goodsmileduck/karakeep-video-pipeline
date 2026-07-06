@@ -78,11 +78,18 @@ video-tagger`.
   periodically) and carry a small ban risk on the burner. See
   `cookies/instagram.txt.example`. Default (no cookies) keeps working.
 - **Whisper** uses `small` (CPU/int8) by default — ~7× realtime on a modest box. Set
-  `WHISPER_MODEL=base` (faster) or `medium` (more accurate) in `.env`.
+  `WHISPER_MODEL=base` (faster) or `medium` (more accurate) in `.env`. Set
+  `WHISPER_LANGUAGE=ru` to force Russian transcription for short/noisy Russian reels;
+  leave it unset or `auto` for Whisper language auto-detection.
 - **GPU:** `ollama` runs CPU-only unless you wire up device passthrough (see the compose
   comments). To reuse an existing host Ollama, comment out the `ollama` service and point
   `OLLAMA_API`/`OLLAMA_BASE_URL` at it.
-- **Deep tagging is audio-based** — reels with no speech yield no content tags (by design).
+- **Deep tagging uses transcript + bookmark metadata.** For Instagram reels, Karakeep
+  page title/description text is included in the tagging prompt when available, so
+  no-speech reels with useful captions can still receive topical tags.
+- **Parse failures are retryable.** If the local model returns only unusable tags, such
+  as a fused hashtag block, `video-tagger` logs `tag parse failed bm=<id> raw=<output>`
+  and leaves the item unmarked so it can retry after prompt/model/config changes.
 
 ## License
 
