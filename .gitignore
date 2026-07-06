@@ -5,3 +5,4 @@ __pycache__/
 cobalt/keys.json
 cookies/instagram.txt
 .superpowers/
+.worktrees/
