@@ -14,9 +14,6 @@ def _short(text, limit=500):
         return s
     return s[:limit - 3] + "..."
 
-def _note_text(transcript, context):
-    return ("Transcript:\n" + transcript.strip() + "\n\nTagging context:\n" + context)[:8000]
-
 def process(bm, kk, oclient, obase, omodel, *, _transcribe_fn=None, _tag_fn=None):
     bid = bm["id"]; aid = video_asset_id(bm)
     if not aid: return
@@ -34,7 +31,6 @@ def process(bm, kk, oclient, obase, omodel, *, _transcribe_fn=None, _tag_fn=None
             except Exception as se:
                 log.error("sentinel failed after transcribe error %s: %s", bid, se)
             return
-        context = build_tagging_context(bm, text)
         if not has_tagging_signal(bm, text):
             log.info("no speech in %s; marking done", bid)
             try:
@@ -42,6 +38,7 @@ def process(bm, kk, oclient, obase, omodel, *, _transcribe_fn=None, _tag_fn=None
             except Exception as se:
                 log.error("sentinel failed for no-speech %s: %s", bid, se)
             return
+        context = build_tagging_context(bm, text)
         try:
             if _tag_fn is not None:
                 tags = _tag_fn(context)
@@ -52,7 +49,7 @@ def process(bm, kk, oclient, obase, omodel, *, _transcribe_fn=None, _tag_fn=None
             return
         kk.add_tags(bid, tags)  # propagates on failure; retry is safe (tags not yet added)
         try:
-            kk.set_note(bid, _note_text(text, context))
+            kk.set_note(bid, context[:8000])
         except Exception as e:
             log.warning("set_note failed %s (non-fatal): %s", bid, e)
         try:

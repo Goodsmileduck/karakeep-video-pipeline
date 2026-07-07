@@ -1,3 +1,5 @@
+import pytest
+
 from tagger.logic import (
     TagParseError,
     build_tagging_context,
@@ -5,7 +7,6 @@ from tagger.logic import (
     is_empty_transcript,
     needs_tagging,
     parse_tags,
-    raw_tag_candidates,
     video_asset_id,
 )
 
@@ -80,8 +81,10 @@ def test_parse_tags_preserves_existing_valid_formats():
 
 
 def test_parse_tags_rejects_raw_hashtag_blocks():
-    assert parse_tags("#fitness#yoga") == []
-    assert parse_tags("#fitness #yoga") == []
+    with pytest.raises(TagParseError):
+        parse_tags("#fitness#yoga")
+    with pytest.raises(TagParseError):
+        parse_tags("#fitness #yoga")
     assert parse_tags("Cooking, #fitness#yoga, Recipe") == ["Cooking", "Recipe"]
 
 
@@ -93,7 +96,7 @@ def test_parse_tags_preserves_cyrillic_tags():
     assert parse_tags("Йога, Рецепт") == ["Йога", "Рецепт"]
 
 
-def test_raw_tag_candidates_reports_non_empty_bad_output():
-    assert raw_tag_candidates("#fitnessexerciseweightlossmetabolismyogaenergyboost") == [
-        "#fitnessexerciseweightlossmetabolismyogaenergyboost"
-    ]
+def test_parse_tags_raises_with_raw_output_on_unusable_input():
+    with pytest.raises(TagParseError) as err:
+        parse_tags("#fitnessexerciseweightlossmetabolismyogaenergyboost")
+    assert "fitnessexercise" in err.value.raw_output

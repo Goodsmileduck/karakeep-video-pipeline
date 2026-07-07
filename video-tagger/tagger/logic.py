@@ -30,7 +30,7 @@ def _clean_fence(text: str) -> str:
     return s
 
 
-def raw_tag_candidates(llm_text: str) -> list[str]:
+def _raw_tag_candidates(llm_text: str) -> list[str]:
     s = _clean_fence(llm_text)
     if not s:
         return []
@@ -56,9 +56,10 @@ def _is_bad_tag(tag: str) -> bool:
 
 
 def parse_tags(llm_text: str) -> list[str]:
+    candidates = _raw_tag_candidates(llm_text)
     seen = set()
     tags = []
-    for raw in raw_tag_candidates(llm_text):
+    for raw in candidates:
         tag = _normalize_tag(raw)
         if _is_bad_tag(tag):
             continue
@@ -67,6 +68,8 @@ def parse_tags(llm_text: str) -> list[str]:
             continue
         seen.add(key)
         tags.append(tag)
+    if candidates and not tags:
+        raise TagParseError(llm_text)
     return tags
 
 
@@ -77,29 +80,34 @@ def _metadata_value(content: dict, key: str) -> str:
     return str(value).strip()
 
 
-def has_tagging_signal(bm: dict, transcript: str) -> bool:
-    if not is_empty_transcript(transcript or ""):
-        return True
-    content = bm.get("content", {}) or {}
-    return any(_metadata_value(content, key) for key in ("title", "description", "text"))
+# (label, content key, counts as tagging signal) — URL alone is not enough to tag on.
+_CONTEXT_FIELDS = (
+    ("Title", "title", True),
+    ("Description", "description", True),
+    ("Page Text", "text", True),
+    ("URL", "url", False),
+)
 
 
-def build_tagging_context(bm: dict, transcript: str) -> str:
-    content = bm.get("content", {}) or {}
+def _context_sections(bm: dict, transcript: str) -> list[tuple[str, str, bool]]:
     sections = []
     transcript = (transcript or "").strip()
     if transcript:
-        sections.append(("Transcript", transcript))
-    for label, key in (
-        ("Title", "title"),
-        ("Description", "description"),
-        ("Page Text", "text"),
-        ("URL", "url"),
-    ):
+        sections.append(("Transcript", transcript, not is_empty_transcript(transcript)))
+    content = bm.get("content", {}) or {}
+    for label, key, is_signal in _CONTEXT_FIELDS:
         value = _metadata_value(content, key)
         if value:
-            sections.append((label, value))
-    return "\n\n".join(f"{label}:\n{value}" for label, value in sections)
+            sections.append((label, value, is_signal))
+    return sections
+
+
+def has_tagging_signal(bm: dict, transcript: str) -> bool:
+    return any(is_signal for _, _, is_signal in _context_sections(bm, transcript))
+
+
+def build_tagging_context(bm: dict, transcript: str) -> str:
+    return "\n\n".join(f"{label}:\n{value}" for label, value, _ in _context_sections(bm, transcript))
 
 
 def is_empty_transcript(text: str) -> bool:

@@ -1,5 +1,5 @@
 import httpx
-from tagger.logic import TagParseError, parse_tags, raw_tag_candidates
+from tagger.logic import parse_tags
 
 PROMPT = (
     "You are a tagging assistant. Read the video transcript and bookmark metadata. "
@@ -20,12 +20,4 @@ def tags_from_content(client: httpx.Client, base: str, model: str, content: str)
         },
     )
     r.raise_for_status()
-    raw = r.json()["message"]["content"]
-    tags = parse_tags(raw)
-    if raw_tag_candidates(raw) and not tags:
-        raise TagParseError(raw)
-    return tags
-
-
-def tags_from_transcript(client: httpx.Client, base: str, model: str, transcript: str) -> list[str]:
-    return tags_from_content(client, base, model, f"Transcript:\n{transcript}")
+    return parse_tags(r.json()["message"]["content"])
