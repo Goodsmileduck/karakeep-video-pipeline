@@ -48,11 +48,16 @@ def _normalize_tag(tag: str) -> str:
 
 
 def _is_bad_tag(tag: str) -> bool:
-    if not tag or "#" in tag or len(tag) > MAX_TAG_LEN:
+    if not tag or len(tag) > MAX_TAG_LEN:
         return True
     if len(tag) > MAX_SINGLE_TOKEN_LEN and not re.search(r"[\s_-]", tag):
         return True
     return False
+
+
+def _split_hashtags(candidate: str) -> list[str]:
+    # fused hashtag blocks like "#fitness#yoga" carry real tags — recover them
+    return [p for p in candidate.split("#") if p.strip()] if "#" in candidate else [candidate]
 
 
 def parse_tags(llm_text: str) -> list[str]:
@@ -60,14 +65,15 @@ def parse_tags(llm_text: str) -> list[str]:
     seen = set()
     tags = []
     for raw in candidates:
-        tag = _normalize_tag(raw)
-        if _is_bad_tag(tag):
-            continue
-        key = tag.casefold()
-        if key in seen:
-            continue
-        seen.add(key)
-        tags.append(tag)
+        for part in _split_hashtags(raw):
+            tag = _normalize_tag(part)
+            if _is_bad_tag(tag):
+                continue
+            key = tag.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            tags.append(tag)
     if candidates and not tags:
         raise TagParseError(llm_text)
     return tags

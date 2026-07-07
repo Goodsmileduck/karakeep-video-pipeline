@@ -75,17 +75,20 @@ def test_parse_tags_normalizes_and_filters_bad_hashtags():
     ) == ["Yoga", "Fitness"]
 
 
+def test_parse_tags_raises_when_no_tag_survives():
+    with pytest.raises(TagParseError):
+        parse_tags("#fitnessexerciseweightlossmetabolismyogaenergybooststressrelief")
+
+
 def test_parse_tags_preserves_existing_valid_formats():
     assert parse_tags("```json\n[\"Cooking\", \"Recipe\"]\n```") == ["Cooking", "Recipe"]
     assert parse_tags("Cooking\nRecipe\nDessert") == ["Cooking", "Recipe", "Dessert"]
 
 
-def test_parse_tags_rejects_raw_hashtag_blocks():
-    with pytest.raises(TagParseError):
-        parse_tags("#fitness#yoga")
-    with pytest.raises(TagParseError):
-        parse_tags("#fitness #yoga")
-    assert parse_tags("Cooking, #fitness#yoga, Recipe") == ["Cooking", "Recipe"]
+def test_parse_tags_splits_fused_hashtag_blocks():
+    assert parse_tags("#fitness#yoga") == ["fitness", "yoga"]
+    assert parse_tags("#fitness #yoga") == ["fitness", "yoga"]
+    assert parse_tags("Cooking, #fitness#yoga, Recipe") == ["Cooking", "fitness", "yoga", "Recipe"]
 
 
 def test_parse_tags_accepts_fence_with_spaced_info_string():

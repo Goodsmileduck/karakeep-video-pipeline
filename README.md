@@ -87,8 +87,9 @@ video-tagger`.
 - **Deep tagging uses transcript + bookmark metadata.** For Instagram reels, Karakeep
   page title/description text is included in the tagging prompt when available, so
   no-speech reels with useful captions can still receive topical tags.
-- **Parse failures are retryable.** If the local model returns only unusable tags, such
-  as a fused hashtag block, `video-tagger` logs `tag parse failed bm=<id> raw=<output>`
+- **Hashtag output is recovered, not rejected.** Fused hashtag blocks like
+  `#fitness#yoga` are split into individual tags. If the model output still yields no
+  usable tags, `video-tagger` logs `tag parse failed bm=<id> raw=<output>`
   and leaves the item unmarked so it can retry after prompt/model/config changes.
 
 ## License
