@@ -1,6 +1,10 @@
 from unittest.mock import MagicMock, call
 from tagger.logic import TagParseError
-from tagger.main import DONE, process
+from tagger.main import DONE, FAILED, process
+
+
+def _raise(_vid):
+    raise RuntimeError("tuple index out of range")
 
 
 def _bm_with_video(content=None):
@@ -40,6 +44,22 @@ def test_tags_and_sentinel():
     )
     kk.add_tags.assert_called_once_with("bm1", ["Cooking", "Recipe"])
     kk.add_tag.assert_called_once_with("bm1", DONE)
+
+
+def test_transcribe_error_marks_failed_not_done():
+    """A non-video asset crashes whisper → tag FAILED (not the DONE success sentinel).
+
+    Previously the except block wrote DONE, masking the failure as success so it
+    looked tagged with zero content tags and was never retried.
+    """
+    kk = _make_kk()
+    process(
+        _bm_with_video(), kk, None, None, None,
+        _transcribe_fn=_raise,
+        _tag_fn=lambda text: ["should", "not", "run"],
+    )
+    kk.add_tag.assert_called_once_with("bm1", FAILED)
+    kk.add_tags.assert_not_called()
 
 
 def test_note_failure_still_sentinels():
